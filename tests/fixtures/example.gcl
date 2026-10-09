@@ -1,0 +1,8 @@
+// Smoke-test input for the installed graphcal.
+param mass: Mass = 100.0 kg;
+param velocity: Velocity = 50.0 m/s;
+param max_velocity: Velocity = 200.0 m/s;
+
+node momentum: Force * Time = @mass * @velocity;
+
+assert velocity_in_range = @velocity < @max_velocity;

@@ -1,0 +1,107 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS covers the system bash 3.2.
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: /bin/bash tests/lib.test.sh
+
+  install:
+    name: Install ${{ matrix.version }} (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # One runner per release target.
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+        version: [latest, 0.0.1-alpha.35]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/
+        id: setup
+        with:
+          version: ${{ matrix.version }}
+      - name: Check outputs and PATH
+        shell: bash
+        env:
+          REQUESTED: ${{ matrix.version }}
+          INSTALLED: ${{ steps.setup.outputs.version }}
+          BINARY: ${{ steps.setup.outputs.path }}
+        run: |
+          set -euo pipefail
+          echo "version=$INSTALLED path=$BINARY"
+          [ -n "$INSTALLED" ]
+          if [ "$REQUESTED" != latest ]; then [ "$INSTALLED" = "$REQUESTED" ]; fi
+          [ -f "$BINARY" ]
+          [ "$(graphcal --version | awk '{print $2}')" = "$INSTALLED" ]
+      - run: graphcal check tests/fixtures
+      - run: graphcal eval tests/fixtures/example.gcl
+
+  checksum:
+    name: Checksum and error handling
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # No checkout: `$/` resolves the action without the workspace.
+    steps:
+      - name: Pinned checksum
+        uses: $/
+        with:
+          version: v0.0.1-alpha.35
+          checksum: sha256:ed8ae8439bd6fa14b31363dae0649b649a02946a2ec8b257c8794f9dfdc79350
+      - name: Wrong checksum (must fail)
+        id: wrong-checksum
+        continue-on-error: true
+        uses: $/
+        with:
+          version: 0.0.1-alpha.35
+          checksum: "0000000000000000000000000000000000000000000000000000000000000000"
+      - name: Release without binaries (must fail)
+        id: no-binaries
+        continue-on-error: true
+        uses: $/
+        with:
+          version: 0.0.1-alpha.34
+      - name: Invalid version (must fail)
+        id: invalid-version
+        continue-on-error: true
+        uses: $/
+        with:
+          version: "0.0"
+      - name: Check failures
+        env:
+          WRONG_CHECKSUM: ${{ steps.wrong-checksum.outcome }}
+          NO_BINARIES: ${{ steps.no-binaries.outcome }}
+          INVALID_VERSION: ${{ steps.invalid-version.outcome }}
+        run: |
+          set -euo pipefail
+          [ "$WRONG_CHECKSUM" = failure ]
+          [ "$NO_BINARIES" = failure ]
+          [ "$INVALID_VERSION" = failure ]
