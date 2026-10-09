@@ -1,0 +1,92 @@
+[project]
+name = "setup-graphcal"
+# Not a published package: releases are the v1.x.y git tags of the action.
+version = "0.0.0"
+description = "GitHub Action that installs a prebuilt graphcal CLI from GitHub Releases"
+readme = "README.md"
+# The action runs with whatever Python the runner provides (no installs), so
+# src/setup_graphcal/ must stay standard-library only and support Python 3.10
+# (the system Python of ubuntu-22.04). Raise to 3.12 once ubuntu-22.04 runners
+# are retired (2027-04-17, actions/runner-images#14254).
+requires-python = ">=3.10"
+authors = [
+  { name = "Shunichiro Nomura", email = "nomura@space.t.u-tokyo.ac.jp" },
+]
+classifiers = [
+  "Private :: Do Not Upload",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pre-commit>=4.6.2",
+  { include-group = "ruff" },
+  { include-group = "test" },
+  { include-group = "typing" },
+]
+ruff = ["ruff>=0.16.10"]
+test = ["pytest>=9.1.1"]
+typing = [
+  "ty>=0.0.84",
+  { include-group = "test" },
+]
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.pytest]
+addopts = [
+  "--capture=no",
+  "--color=yes",
+  "--log-cli-level=INFO",
+  "--strict-markers",
+  "--verbose",
+  "--verbose",
+  "-ra",  # show extra test summary info for all tests except passed tests
+]
+filterwarnings = ["error"]
+minversion = "9.0"
+required_plugins = []
+strict = true
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "S101",  # use of assert
+  "G",  # logging format
+  "D203",  # 1 blank line required before class docstring
+  "D213",  # multi-line docstring summary should start at the second line
+  "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed
+  "TD002",  # Missing author in TODO
+  "TD003",  # add link on issue into TODO
+  "FIX002",  # Fixme comment
+  "CPY001",  # Missing copyright notice at top of file
+  "COM812",  # Missing trailing comma; conflicts with the formatter
+]
+unfixable = [
+  "F401",  # Prevent auto-fix for unused imports
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**.py" = [
+  "D",  # Docstring
+  "INP001",  # implicit-namespace-package
+  "ANN201",  # missing-return-type-undocumented-public-function
+  "S101",  # use of assert
+]
+
+[tool.uv]
+exclude-newer = "7 days"
