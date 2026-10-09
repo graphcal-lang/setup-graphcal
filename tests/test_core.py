@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import tarfile
 import zipfile
 
@@ -73,7 +74,6 @@ def test_asset_for_unsupported(runner_os: str, runner_arch: str):
         ("latest", "latest"),
         ("", "latest"),
         ("0.0.1-alpha.35", "0.0.1-alpha.35"),
-        ("v0.0.1-alpha.35", "0.0.1-alpha.35"),
         ("1.2.3", "1.2.3"),
         ("1.2.3+build.5", "1.2.3+build.5"),
     ],
@@ -88,6 +88,15 @@ def test_normalize_version(value: str, expected: str):
 )
 def test_normalize_version_invalid(value: str):
     with pytest.raises(SetupError, match="invalid version"):
+        core.normalize_version(value)
+
+
+@pytest.mark.parametrize(
+    ("value", "hint"),
+    [("v0.0.1-alpha.35", "'0.0.1-alpha.35'"), ("v1.2.3", "'1.2.3'")],
+)
+def test_normalize_version_leading_v(value: str, hint: str):
+    with pytest.raises(SetupError, match=f"drop the leading 'v': {re.escape(hint)}"):
         core.normalize_version(value)
 
 
@@ -115,6 +124,7 @@ def test_parse_release_version(body: str, expected: str):
         '{"message":"Not Found"}',
         '{"tag_name":"nightly"}',
         '{"tag_name":"latest"}',
+        '{"tag_name":"1.0.0"}',
         '{"tag_name":1}',
         "[]",
         "<html>",

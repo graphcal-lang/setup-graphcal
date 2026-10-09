@@ -68,21 +68,24 @@ def asset_for(runner_os: str, runner_arch: str) -> Asset:
 
 
 def normalize_version(value: str) -> str:
-    """Normalize the `version` input to `latest` or a version without a leading `v`.
+    """Validate the `version` input: `latest` (or empty) or a full version.
 
-    Only full semantic versions are accepted, which also keeps the value safe
-    to put in a URL.
+    The version is written without the leading `v` of the release tags, like
+    the `version` output and `graphcal --version`. Only full semantic versions
+    are accepted, which also keeps the value safe to put in a URL.
     """
     if value in ("", LATEST):
         return LATEST
-    version = value.removeprefix("v")
-    if _VERSION.fullmatch(version) is None:
+    if _VERSION.fullmatch(value) is not None:
+        return value
+    if value.startswith("v") and _VERSION.fullmatch(value[1:]) is not None:
+        msg = f"invalid version: {value!r} (drop the leading 'v': {value[1:]!r})"
+    else:
         msg = (
             f"invalid version: {value!r} "
             f"(expected 'latest' or a full version such as '{FIRST_BINARY_RELEASE}')"
         )
-        raise SetupError(msg)
-    return version
+    raise SetupError(msg)
 
 
 def download_url(version: str, file_name: str) -> str:
@@ -90,20 +93,19 @@ def download_url(version: str, file_name: str) -> str:
 
 
 def parse_release_version(body: str) -> str:
-    """Extract the version from a GitHub "get a release" API response."""
+    """Extract the version from a GitHub "get a release" API response.
+
+    Release tags are `v` followed by the version, e.g. `v0.0.1-alpha.35`.
+    """
     try:
         tag = json.loads(body)["tag_name"]
     except (ValueError, TypeError, KeyError) as e:
         msg = "no tag_name in the release response"
         raise SetupError(msg) from e
-    if not isinstance(tag, str):
+    if not (isinstance(tag, str) and tag.startswith("v") and _VERSION.fullmatch(tag[1:])):
         msg = f"unexpected tag_name in the release response: {tag!r}"
         raise SetupError(msg)
-    version = normalize_version(tag)
-    if version == LATEST:
-        msg = f"unexpected tag_name in the release response: {tag!r}"
-        raise SetupError(msg)
-    return version
+    return tag[1:]
 
 
 def normalize_sha256(value: str) -> str:

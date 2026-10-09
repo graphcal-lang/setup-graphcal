@@ -83,7 +83,7 @@ def test_install_does_not_send_token_off_github_com(
 
 
 def test_install_pinned_with_checksum(env: dict[str, str], requests: list[tuple[str, str]]):
-    env["INPUT_VERSION"] = f"v{VERSION}"
+    env["INPUT_VERSION"] = VERSION
     env["INPUT_CHECKSUM"] = f"sha256:{DIGEST.upper()}"
     install.install(env)
     assert [url for url, _ in requests] == [core.download_url(VERSION, ASSET.archive)]

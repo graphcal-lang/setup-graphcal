@@ -85,7 +85,7 @@ jobs:
       - name: Pinned checksum
         uses: $/
         with:
-          version: v0.0.1-alpha.35
+          version: 0.0.1-alpha.35
           checksum: sha256:ed8ae8439bd6fa14b31363dae0649b649a02946a2ec8b257c8794f9dfdc79350
       - name: Wrong checksum (must fail)
         id: wrong-checksum
@@ -106,13 +106,21 @@ jobs:
         uses: $/
         with:
           version: "0.0"
+      - name: Version with a leading v (must fail)
+        id: leading-v
+        continue-on-error: true
+        uses: $/
+        with:
+          version: v0.0.1-alpha.35
       - name: Check failures
         env:
           WRONG_CHECKSUM: ${{ steps.wrong-checksum.outcome }}
           NO_BINARIES: ${{ steps.no-binaries.outcome }}
           INVALID_VERSION: ${{ steps.invalid-version.outcome }}
+          LEADING_V: ${{ steps.leading-v.outcome }}
         run: |
           set -euo pipefail
           [ "$WRONG_CHECKSUM" = failure ]
           [ "$NO_BINARIES" = failure ]
           [ "$INVALID_VERSION" = failure ]
+          [ "$LEADING_V" = failure ]

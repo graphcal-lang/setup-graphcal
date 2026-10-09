@@ -52,7 +52,7 @@ To also pin the archive itself, pass its SHA-256 as `checksum`. The value depend
 
 | Name | Default | Description |
 | --- | --- | --- |
-| `version` | `latest` | `latest`, or a full version such as `0.0.1-alpha.35` (a leading `v` is accepted). Version ranges are not supported. |
+| `version` | `latest` | `latest`, or a full version such as `0.0.1-alpha.35`, written without the leading `v` of the release tag (`v0.0.1-alpha.35` is rejected). Version ranges are not supported. |
 | `checksum` | (empty) | Expected SHA-256 of the release archive for this runner, optionally prefixed with `sha256:`. When empty, the archive is verified against the `.sha256` file published with it. |
 | `github-token` | `${{ github.token }}` | Token used to resolve `latest` through the GitHub API, which avoids the rate limit for unauthenticated requests. It is sent only to `api.github.com`, and only when the workflow runs on github.com. |
 
