@@ -90,10 +90,11 @@ The action is a composite action that runs a Python script (standard library onl
 
 ## Development
 
-- `setup_graphcal/core.py` holds the pure logic and `setup_graphcal/install.py` the IO (network, files, processes). Both must stay standard-library only and run on Python 3.10.
-- Run the unit tests with `uv run pytest`, and check with `uv run ruff format .`, `uv run ruff check .`, and `uv run ty check .`.
+- `src/setup_graphcal/core.py` holds the pure logic and `src/setup_graphcal/install.py` the IO (network, files, processes). Both must stay standard-library only and run on Python 3.10.
+- Set up the development environment with `uv sync`, and install the Git hooks with `uv run pre-commit install`.
+- Run the unit tests with `uv run pytest`, and check with `uv run ruff format .`, `uv run ruff check .`, and `uv run ty check`.
 - The `Test` workflow also installs the action on every supported runner and checks its outputs and failure modes.
-- Lint everything with `pre-commit run --all-files` (ruff, actionlint, zizmor, rumdl, typos).
+- Lint everything with `uv run pre-commit run --all-files` (ruff, uv lock, actionlint, zizmor, rumdl, typos).
 
 ### Release
 

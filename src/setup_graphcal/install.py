@@ -13,18 +13,46 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Mapping
+from http import HTTPStatus
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from setup_graphcal import core
 from setup_graphcal.core import SetupError
 
-_ATTEMPTS = 4
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+_RETRY_DELAYS_SECONDS = (2, 4, 8)
 _TIMEOUT_SECONDS = 60
 
 
+class _RetryableError(SetupError):
+    """A network error or a 5xx response that may succeed when retried."""
+
+
+def emit(line: str) -> None:
+    """Write a line to stdout, where the runner reads workflow commands from."""
+    print(line, flush=True)  # noqa: T201
+
+
 def log(message: str) -> None:
-    print(f"setup-graphcal: {message}", flush=True)
+    """Log a progress message."""
+    emit(f"setup-graphcal: {message}")
+
+
+def _get(request: urllib.request.Request) -> bytes:
+    try:
+        with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:  # noqa: S310 (fetch checks the scheme)
+            return response.read()
+    except urllib.error.HTTPError as e:
+        msg = f"GET {request.full_url}: HTTP {e.code} {e.reason}"
+        if e.code >= HTTPStatus.INTERNAL_SERVER_ERROR:
+            raise _RetryableError(msg) from e
+        raise SetupError(msg) from e
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        msg = f"GET {request.full_url}: {e}"
+        raise _RetryableError(msg) from e
 
 
 def fetch(url: str, *, headers: Mapping[str, str] | None = None, token: str = "") -> bytes:
@@ -32,33 +60,21 @@ def fetch(url: str, *, headers: Mapping[str, str] | None = None, token: str = ""
     if not url.startswith("https://"):
         msg = f"refusing to fetch a non-HTTPS URL: {url}"
         raise SetupError(msg)
-    # S310: the scheme is checked above.
-    request = urllib.request.Request(  # noqa: S310
-        url, headers={"User-Agent": "setup-graphcal", **(headers or {})}
-    )
+    request = urllib.request.Request(url, headers={"User-Agent": "setup-graphcal", **(headers or {})})  # noqa: S310 (scheme checked above)
     if token:
         # Unlike add_header, this is not forwarded when the server redirects.
         request.add_unredirected_header("Authorization", f"Bearer {token}")
-    for attempt in range(1, _ATTEMPTS + 1):
+    for delay in _RETRY_DELAYS_SECONDS:
         try:
-            with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:  # noqa: S310
-                return response.read()
-        except urllib.error.HTTPError as e:
-            if e.code < 500 or attempt == _ATTEMPTS:
-                msg = f"GET {url}: HTTP {e.code} {e.reason}"
-                raise SetupError(msg) from e
-            error: Exception = e
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
-            if attempt == _ATTEMPTS:
-                msg = f"GET {url}: {e}"
-                raise SetupError(msg) from e
-            error = e
-        log(f"retrying GET {url} after error: {error}")
-        time.sleep(2**attempt)
-    raise AssertionError("unreachable")
+            return _get(request)
+        except _RetryableError as e:  # noqa: PERF203 (retry loop; network time dominates)
+            log(f"retrying in {delay}s after error: {e}")
+            time.sleep(delay)
+    return _get(request)
 
 
 def resolve_latest(env: Mapping[str, str]) -> str:
+    """Return the version of the latest release through the GitHub API."""
     # The workflow token belongs to the GitHub instance running the job; only
     # send it to the github.com API.
     on_github_com = env.get("GITHUB_SERVER_URL", "https://github.com") == "https://github.com"
@@ -72,6 +88,7 @@ def resolve_latest(env: Mapping[str, str]) -> str:
 
 
 def download_archive(version: str, asset: core.Asset) -> bytes:
+    """Download the release archive into memory."""
     url = core.download_url(version, asset.archive)
     log(f"downloading {url}")
     try:
@@ -85,6 +102,7 @@ def download_archive(version: str, asset: core.Asset) -> bytes:
 
 
 def expected_sha256(version: str, asset: core.Asset, checksum_input: str) -> str:
+    """Return the expected digest: the `checksum` input, or the published `.sha256` file."""
     if checksum_input:
         return core.normalize_sha256(checksum_input)
     text = fetch(core.download_url(version, f"{asset.archive}.sha256")).decode("utf-8")
@@ -92,8 +110,9 @@ def expected_sha256(version: str, asset: core.Asset, checksum_input: str) -> str
 
 
 def installed_version(binary: Path) -> str:
+    """Return the version reported by `graphcal --version`."""
     try:
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(  # noqa: S603 (runs the binary just installed)
             [str(binary), "--version"],
             capture_output=True,
             text=True,
@@ -107,11 +126,13 @@ def installed_version(binary: Path) -> str:
 
 
 def append_line(path: str, line: str) -> None:
+    """Append a line to a runner file such as GITHUB_PATH or GITHUB_OUTPUT."""
     with Path(path).open("a", encoding="utf-8") as f:
         f.write(f"{line}\n")
 
 
 def install(env: Mapping[str, str]) -> None:
+    """Install graphcal as the action inputs in `env` request."""
     version = core.normalize_version(env.get("INPUT_VERSION", core.LATEST))
     if version == core.LATEST:
         version = resolve_latest(env)
@@ -145,9 +166,10 @@ def install(env: Mapping[str, str]) -> None:
 
 
 def main() -> int:
+    """Run the action and return the exit status."""
     try:
         install(os.environ)
     except SetupError as e:
-        print(core.error_command(str(e)), flush=True)
+        emit(core.error_command(str(e)))
         return 1
     return 0

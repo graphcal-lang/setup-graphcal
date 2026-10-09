@@ -49,6 +49,7 @@ class Asset:
 
     @property
     def is_zip(self) -> bool:
+        """Whether the archive is a zip file (Windows) rather than a gzipped tarball."""
         return self.archive.endswith(".zip")
 
 
@@ -81,14 +82,12 @@ def normalize_version(value: str) -> str:
     if value.startswith("v") and _VERSION.fullmatch(value[1:]) is not None:
         msg = f"invalid version: {value!r} (drop the leading 'v': {value[1:]!r})"
     else:
-        msg = (
-            f"invalid version: {value!r} "
-            f"(expected 'latest' or a full version such as '{FIRST_BINARY_RELEASE}')"
-        )
+        msg = f"invalid version: {value!r} (expected 'latest' or a full version such as '{FIRST_BINARY_RELEASE}')"
     raise SetupError(msg)
 
 
 def download_url(version: str, file_name: str) -> str:
+    """Return the download URL of a release asset."""
     return f"https://github.com/{REPO}/releases/download/v{version}/{file_name}"
 
 
@@ -134,11 +133,12 @@ def parse_version_output(text: str) -> str:
 
     For example, `graphcal 0.0.1-alpha.35 (commit: 106312a)` -> `0.0.1-alpha.35`.
     """
-    fields = text.split()
-    if len(fields) < 2 or fields[0] != "graphcal":
-        msg = f"unexpected 'graphcal --version' output: {text!r}"
-        raise SetupError(msg)
-    return fields[1]
+    match text.split():
+        case ["graphcal", version, *_]:
+            return version
+        case _:
+            msg = f"unexpected 'graphcal --version' output: {text!r}"
+            raise SetupError(msg)
 
 
 def read_executable(archive: bytes, asset: Asset) -> bytes:

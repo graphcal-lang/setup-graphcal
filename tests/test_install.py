@@ -41,12 +41,13 @@ def requests(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str]]:
         core.LATEST_RELEASE_API: json.dumps({"tag_name": f"v{VERSION}"}).encode(),
         core.download_url(VERSION, ASSET.archive): ARCHIVE,
         core.download_url(
-            VERSION, f"{ASSET.archive}.sha256"
+            VERSION,
+            f"{ASSET.archive}.sha256",
         ): f"{DIGEST} *{ASSET.archive}\n\n".encode(),
     }
     seen: list[tuple[str, str]] = []
 
-    def fake_fetch(url: str, *, headers: object = None, token: str = "") -> bytes:
+    def fake_fetch(url: str, *, token: str = "", **_: object) -> bytes:
         seen.append((url, token))
         if url not in responses:
             msg = f"GET {url}: HTTP 404 Not Found"
@@ -75,7 +76,8 @@ def test_install_latest(env: dict[str, str], requests: list[tuple[str, str]]):
 
 
 def test_install_does_not_send_token_off_github_com(
-    env: dict[str, str], requests: list[tuple[str, str]]
+    env: dict[str, str],
+    requests: list[tuple[str, str]],
 ):
     env["GITHUB_SERVER_URL"] = "https://ghe.example.com"
     install.install(env)
@@ -89,7 +91,8 @@ def test_install_pinned_with_checksum(env: dict[str, str], requests: list[tuple[
     assert [url for url, _ in requests] == [core.download_url(VERSION, ASSET.archive)]
 
 
-def test_install_checksum_mismatch(env: dict[str, str], requests: list[tuple[str, str]]):
+@pytest.mark.usefixtures("requests")
+def test_install_checksum_mismatch(env: dict[str, str]):
     env["INPUT_CHECKSUM"] = "0" * 64
     with pytest.raises(SetupError, match="checksum mismatch"):
         install.install(env)
@@ -97,17 +100,15 @@ def test_install_checksum_mismatch(env: dict[str, str], requests: list[tuple[str
     assert Path(env["GITHUB_PATH"]).read_text() == ""
 
 
-def test_install_release_without_binaries(env: dict[str, str], requests: list[tuple[str, str]]):
+@pytest.mark.usefixtures("requests")
+def test_install_release_without_binaries(env: dict[str, str]):
     env["INPUT_VERSION"] = "0.0.1-alpha.34"
     with pytest.raises(SetupError, match="prebuilt binaries are available from"):
         install.install(env)
 
 
-def test_install_version_mismatch(
-    env: dict[str, str],
-    requests: list[tuple[str, str]],
-    monkeypatch: pytest.MonkeyPatch,
-):
+@pytest.mark.usefixtures("requests")
+def test_install_version_mismatch(env: dict[str, str], monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(install, "installed_version", lambda _binary: "0.0.1-alpha.36")
     with pytest.raises(SetupError, match=r"reports version 0\.0\.1-alpha\.36"):
         install.install(env)
@@ -124,5 +125,5 @@ def test_main_reports_error(
         monkeypatch.setenv(key, value)
     assert install.main() == 1
     assert capsys.readouterr().out.startswith(
-        "::error title=setup-graphcal::invalid version: '0.0'"
+        "::error title=setup-graphcal::invalid version: '0.0'",
     )

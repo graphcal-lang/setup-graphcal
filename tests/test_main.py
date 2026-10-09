@@ -5,14 +5,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).parent.parent
+SRC = Path(__file__).parent.parent / "src"
 
 
 def test_python_m_runs_the_action(tmp_path: Path):
     # Run as action.yaml does, with an input that fails before any network access.
+    # -S skips site-packages, so the package is imported through PYTHONPATH only.
     env = {
         **os.environ,
-        "PYTHONPATH": str(ROOT),
+        "PYTHONPATH": str(SRC),
         "INPUT_VERSION": "v0.0.1-alpha.35",
         "RUNNER_OS": "Linux",
         "RUNNER_ARCH": "X64",
@@ -21,7 +22,7 @@ def test_python_m_runs_the_action(tmp_path: Path):
         "GITHUB_OUTPUT": str(tmp_path / "output"),
     }
     result = subprocess.run(
-        [sys.executable, "-m", "setup_graphcal"],
+        [sys.executable, "-S", "-m", "setup_graphcal"],
         capture_output=True,
         text=True,
         check=False,
