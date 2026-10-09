@@ -1,0 +1,46 @@
+name: Setup Graphcal
+description: Install a prebuilt graphcal CLI from GitHub Releases and add it to PATH.
+author: graphcal-lang
+branding:
+  icon: activity
+  color: blue
+
+inputs:
+  version:
+    description: >-
+      The graphcal version to install: `latest` (default), or a full version
+      such as `0.0.1-alpha.35` (a leading `v` is accepted).
+    required: false
+    default: latest
+  checksum:
+    description: >-
+      Expected SHA-256 of the release archive for this runner. When empty, the
+      archive is verified against the `.sha256` file published with it.
+    required: false
+    default: ""
+  github-token:
+    description: >-
+      Token used to resolve `latest` through the GitHub API, which avoids the
+      rate limit for unauthenticated requests.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  version:
+    description: The installed graphcal version, without a leading `v`.
+    value: ${{ steps.install.outputs.version }}
+  path:
+    description: Absolute path of the installed graphcal executable.
+    value: ${{ steps.install.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install graphcal
+      id: install
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_CHECKSUM: ${{ inputs.checksum }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: '"$GITHUB_ACTION_PATH/scripts/install.sh"'
