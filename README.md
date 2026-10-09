@@ -83,16 +83,17 @@ Prebuilt binaries are published from Graphcal 0.0.1-alpha.35 onward. Earlier ver
 2. Pick the release target from `runner.os` and `runner.arch`.
 3. Download `graphcal-{target}.tar.gz` (`.zip` on Windows) from the release.
 4. Verify its SHA-256 against the `checksum` input or the published `.sha256` file.
-5. Extract `graphcal` into `$RUNNER_TEMP` and add the directory to `PATH`.
+5. Extract only the `graphcal` executable into `$RUNNER_TEMP` and add its directory to `PATH`.
 6. Run `graphcal --version` and check that it reports the resolved version.
 
-The action is a composite action written in bash. It needs `curl`, `tar`, and `sha256sum` or `shasum`, plus `pwsh` on Windows, all of which are present on GitHub-hosted runners.
+The action is a composite action that runs a Python script (standard library only) with the runner's own `python`. It needs Python 3.10 or later, which every GitHub-hosted runner provides. On self-hosted runners and in container jobs, make sure `python` 3.10+ is on `PATH`.
 
 ## Development
 
-- `tests/lib.test.sh` unit-tests the pure helpers in `scripts/lib.sh`. `scripts/install.sh` does the IO.
-- The `Test` workflow installs the action on every supported runner and checks its outputs and failure modes.
-- Lint with `pre-commit run --all-files` (shellcheck, actionlint, zizmor, rumdl, typos).
+- `setup_graphcal/core.py` holds the pure logic and `setup_graphcal/install.py` the IO (network, files, processes). Both must stay standard-library only and run on Python 3.10.
+- Run the unit tests with `uv run pytest`, and check with `uv run ruff format .`, `uv run ruff check .`, and `uv run ty check .`.
+- The `Test` workflow also installs the action on every supported runner and checks its outputs and failure modes.
+- Lint everything with `pre-commit run --all-files` (ruff, actionlint, zizmor, rumdl, typos).
 
 ### Release
 

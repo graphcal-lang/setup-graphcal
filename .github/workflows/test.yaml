@@ -14,20 +14,28 @@ concurrency:
 
 jobs:
   unit:
-    name: Unit tests (${{ matrix.os }})
+    name: Unit tests (Python ${{ matrix.python }})
     strategy:
       fail-fast: false
       matrix:
-        # macOS covers the system bash 3.2.
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+        # The oldest Python the action supports (pyproject.toml) and the latest.
+        python: ["3.10", "3.14"]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: /bin/bash tests/lib.test.sh
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv run --locked ruff format --check .
+      - run: uv run --locked ruff check .
+      - run: uv run --locked ty check --python-version "$PYTHON_VERSION" .
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+      - run: uv run --locked pytest
 
   install:
     name: Install ${{ matrix.version }} (${{ matrix.os }})
