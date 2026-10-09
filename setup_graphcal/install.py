@@ -10,7 +10,6 @@ import hashlib
 import os
 import shutil
 import subprocess
-import sys
 import time
 import urllib.error
 import urllib.request
@@ -152,7 +151,3 @@ def main() -> int:
         print(core.error_command(str(e)), flush=True)
         return 1
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

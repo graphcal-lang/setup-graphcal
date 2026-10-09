@@ -40,19 +40,11 @@ runs:
     - name: Install graphcal
       id: install
       # Runs the runner's own Python; setup_graphcal/ is standard-library only.
-      shell: python
+      shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_CHECKSUM: ${{ inputs.checksum }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        PYTHONPATH: ${{ github.action_path }}
         PYTHONDONTWRITEBYTECODE: "1"
-      run: |
-        import os, sys
-
-        if sys.version_info < (3, 10):
-            print(f"::error title=setup-graphcal::Python 3.10 or later is required, found {sys.version.split()[0]}")
-            sys.exit(1)
-        sys.path.insert(0, os.environ["GITHUB_ACTION_PATH"])
-        from setup_graphcal.install import main
-
-        sys.exit(main())
+      run: python -m setup_graphcal
