@@ -20,7 +20,7 @@ repos:
       - id: no-commit-to-branch
 
   - repo: https://github.com/rvben/rumdl-pre-commit
-    rev: 83cecb6b523a053d7d3dfdc4798d705b505a88f9  # frozen: v0.2.78
+    rev: b0cff962ee693b9e612c097d22e71e0cba127447  # frozen: v0.3.2
     hooks:
       - id: rumdl
 
@@ -30,13 +30,13 @@ repos:
       - id: typos
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: f12be1ebaa5351c1fc76472de98db2c3446c8253  # frozen: v0.16.10
+    rev: c0f278f1254ccc8fb09676bcdb8d847e7db493e5  # frozen: v0.17.4
     hooks:
       - id: ruff-check
       - id: ruff-format
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 308b7fa26251088f0f2a9ad4a5b5d86e30ac5455  # frozen: 0.12.24
+    rev: d1df990f871e616da38bb602a2671d5e840b9989  # frozen: 0.13.7
     hooks:
       - id: uv-lock
 
