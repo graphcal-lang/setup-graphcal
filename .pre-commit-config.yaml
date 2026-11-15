@@ -25,7 +25,7 @@ repos:
       - id: rumdl
 
   - repo: https://github.com/crate-ci/typos
-    rev: 9023c1f779400877cafdd98052113fc777e2cfdc  # frozen: v1.51.1
+    rev: 7f9d0819ca1c008ade73f4b41fa9d258d48f605b  # frozen: v1.51.1
     hooks:
       - id: typos
 
